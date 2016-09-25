@@ -10,7 +10,7 @@ import time
 '''
 Configuration
 '''
-MAC = "50:65:f3:1b:33:e6"
+MAC = "58:70:c6:01:71:66"
 gateway = "192.168.1.1"
 interface = "ens33"
 deadline = 999999
@@ -29,6 +29,7 @@ ettercap = None # The tread of Ettercap
 lastBytesOut = 0
 lastBytesIn = 0
 
+#Usual check
 if platform.python_version()[0] != '3':
     print("You must trace the Cell with Python 3!")
     sys.exit(1)
@@ -92,10 +93,17 @@ def new_arp():
 
 def getIP():
     global IP, changed
+
+    e("Trying to get IP...")
+    # Get ARP list
+    command = "ip neigh flush dev " + interface
+    os.system(command)
     command = "nmap -sP " + gateway + "/24"
     os.popen(command).read()
-    command = "arp|grep " + MAC
+    command = "arp -n|grep " + MAC
     arp_raw = os.popen(command).read()
+
+    # Try to get its IP from the list
     if len(arp_raw):
         arp = arp_raw.split()
         if (IP != arp[0]):
@@ -137,9 +145,14 @@ def monitor():
         if not dancing:
             e("Warning! The Cell is dancing!")
             dancing = True
-        alarm()
     else:
         dancing = False
+
+def watchCat():
+    while True:
+        if dancing:
+            alarm()
+        time.sleep(1)
 
 
 def alarm():
@@ -165,6 +178,9 @@ if __name__ == "__main__":
     e("Now pinpointing the Cell...")
     heartbeat()
     getIP()
+    t = threading.Thread(target=watchCat)
+    t.setDaemon(True)
+    t.start()
     while True and running:
         time.sleep(interval)
         if not ready():
