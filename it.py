@@ -28,6 +28,8 @@ ettercap = None # The tread of Ettercap
 # All bytes forwarded last time
 lastBytesOut = 0
 lastBytesIn = 0
+maxOut = 0
+maxIn = 0
 
 #Usual check
 if platform.python_version()[0] != '3':
@@ -132,14 +134,18 @@ def getDataPackCnt():
 
 
 def monitor():
-    global dancing
+    global dancing, maxIn, maxOut
     bakOut, bakIn = getDataPackCnt()
     outSpeed, inSpeed =\
         round((lastBytesOut - bakOut) / interval / 1024, 2),\
         round((lastBytesIn - bakIn) / interval / 1024, 2)
 
-    print("Speed of OUT: ", outSpeed, " KB/s")
-    print("Speed of IN: ", inSpeed, " KB/s")
+    if inSpeed > maxIn:
+        maxIn = inSpeed
+        e("Speed of IN: " + str(inSpeed) + " KB/s")
+    if outSpeed > maxOut:
+        maxOut = outSpeed
+        e("Speed of OUT: " + str(outSpeed) + " KB/s")
 
     if outSpeed > deadline or inSpeed > deadline:
         if not dancing:
