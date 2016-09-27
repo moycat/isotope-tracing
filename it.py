@@ -2,6 +2,7 @@
 import platform
 import os
 import pexpect
+import re
 import signal
 import sys
 import threading
@@ -13,7 +14,7 @@ Configuration
 MAC = "58:70:c6:01:71:66"
 gateway = "192.168.1.1"
 interface = "ens33"
-deadline = 999999
+deadline = 100
 interval = 3
 
 '''
@@ -95,7 +96,6 @@ def new_arp():
 
 def getIP():
     global IP, changed
-
     e("Trying to get IP...")
     # Get ARP list
     command = "ip neigh flush dev " + interface
@@ -104,17 +104,17 @@ def getIP():
     os.popen(command).read()
     command = "arp -n|grep " + MAC
     arp_raw = os.popen(command).read()
-
     # Try to get its IP from the list
-    if len(arp_raw):
-        arp = arp_raw.split()
-        if (IP != arp[0]):
-            IP = arp[0]
+    reip = re.compile(r'(?<![\.\d])(?:\d{1,3}\.){3}\d{1,3}(?![\.\d])')
+    ip = reip.findall(arp_raw)
+    if len(ip):
+        if IP != ip[0]:
+            IP = ip[0]
             changed = True
-            e("New destination IP: " + arp[0])
+            e("New destination IP: " + IP)
     elif IP != "":
         IP = ""
-        e("No destination IP found! The host may be down.")
+        e("Destination IP lost! The host may be down.")
     t = threading.Timer(300, getIP)
     t.setDaemon(True)
     t.start()
@@ -139,7 +139,6 @@ def monitor():
     outSpeed, inSpeed =\
         round((lastBytesOut - bakOut) / interval / 1024, 2),\
         round((lastBytesIn - bakIn) / interval / 1024, 2)
-
     if inSpeed > maxIn:
         maxIn = inSpeed
         e("Speed of IN: " + str(inSpeed) + " KB/s")
@@ -152,6 +151,8 @@ def monitor():
             e("Warning! The Cell is dancing!")
             dancing = True
     else:
+        if dancing:
+            e("Fine, the Cell has stopped dancing.")
         dancing = False
 
 def watchCat():
@@ -162,8 +163,8 @@ def watchCat():
 
 
 def alarm():
-    e("Alarm")
     pass
+
 
 def heartbeat():
     alarm()
